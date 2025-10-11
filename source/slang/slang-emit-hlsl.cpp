@@ -442,6 +442,11 @@ void HLSLSourceEmitter::emitEntryPointAttributesImpl(
     {
         if (profile.getVersion() >= ProfileVersion::DX_6_1)
         {
+            if (m_codeGenContext->getTargetProgram()->getOptionSet().getBoolOption(
+                    CompilerOptionName::PlainFunctionEntryPoints))
+            {
+                return;
+            }
             char const* stageName = getStageName(stage);
             if (stageName)
             {
@@ -787,6 +792,13 @@ bool HLSLSourceEmitter::tryEmitInstStmtImpl(IRInst* inst)
 
 static bool isTargetHLSL2018(HLSLSourceEmitter* emitter, CapabilitySet targetCaps, Stage stage)
 {
+    if (stage == Stage::Unknown &&
+        emitter->getTargetProgram()->getOptionSet().getBoolOption(
+            CompilerOptionName::PlainFunctionEntryPoints))
+    {
+        return false;
+    }
+
     auto stageAtom = getAtomFromStage(stage);
 
     // Cache the result of this function for easier lookup.

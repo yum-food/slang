@@ -743,6 +743,13 @@ bool resolveStageOfProfileWithEntryPoint(
         entryPointProfile.additionalCapabilities.add(entryPointAttr->capabilitySet);
         return true;
     }
+
+    if (optionSet.getBoolOption(CompilerOptionName::PlainFunctionEntryPoints))
+    {
+        entryPointProfile.setStage(Stage::Dispatch);
+        return true;
+    }
+
     return false;
 }
 

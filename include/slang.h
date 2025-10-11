@@ -1004,6 +1004,7 @@ typedef uint32_t SlangSizeT;
         NoMangle,
         NoHLSLBinding,
         NoHLSLPackConstantBufferElements,
+        PlainFunctionEntryPoints,
         ValidateUniformity,
         AllowGLSL,
         EnableExperimentalPasses,

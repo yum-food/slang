@@ -830,6 +830,7 @@ Result linkAndOptimizeIR(
     // TODO: We should skip this step for CUDA targets.
     // (NM): we actually do need to do this step for OptiX based CUDA targets
     //
+    if (!targetProgram->getOptionSet().getBoolOption(CompilerOptionName::PlainFunctionEntryPoints))
     {
         CollectEntryPointUniformParamsOptions passOptions;
         passOptions.targetReq = targetRequest;
@@ -862,10 +863,13 @@ Result linkAndOptimizeIR(
     switch (target)
     {
     default:
-        moveEntryPointUniformParamsToGlobalScope(irModule);
+        if (!targetProgram->getOptionSet().getBoolOption(CompilerOptionName::PlainFunctionEntryPoints))
+        {
+            moveEntryPointUniformParamsToGlobalScope(irModule);
 #if 0
-        dumpIRIfEnabled(codeGenContext, irModule, "ENTRY POINT UNIFORMS MOVED");
+            dumpIRIfEnabled(codeGenContext, irModule, "ENTRY POINT UNIFORMS MOVED");
 #endif
+        }
         validateIRModuleIfEnabled(codeGenContext, irModule);
         break;
     case CodeGenTarget::HostCPPSource:

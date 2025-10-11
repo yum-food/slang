@@ -934,6 +934,10 @@ void initCommandOptions(CommandOptions& options)
          "-embed-downstream-ir",
          nullptr,
          "Embed downstream IR into emitted slang IR"},
+        {OptionKind::PlainFunctionEntryPoints,
+         "-plain-function-entry-points",
+         nullptr,
+         "Keep entry points as plain functions without moving uniform parameters into global constant buffers"},
     };
     _addOptions(makeConstArrayView(experimentalOpts), options);
 
@@ -2279,6 +2283,7 @@ SlangResult OptionsParser::_parse(int argc, char const* const* argv)
         case OptionKind::IncompleteLibrary:
         case OptionKind::NoHLSLBinding:
         case OptionKind::NoHLSLPackConstantBufferElements:
+        case OptionKind::PlainFunctionEntryPoints:
         case OptionKind::LoopInversion:
         case OptionKind::UnscopedEnum:
         case OptionKind::PreserveParameters:
