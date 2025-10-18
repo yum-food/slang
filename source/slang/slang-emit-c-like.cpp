@@ -2325,7 +2325,15 @@ void CLikeSourceEmitter::emitInstStmt(IRInst* inst)
 
 void CLikeSourceEmitter::diagnoseUnhandledInst(IRInst* inst)
 {
-    getSink()->diagnose(inst, Diagnostics::unimplemented, "unexpected IR opcode during code emit");
+    std::string message = "unexpected IR opcode during code emit";
+
+    if (inst) {
+        const IRDumpOptions dumpOptions{IRDumpOptions::Mode::Detailed,
+                                        IRDumpOptions::Flag::DumpDebugIds};
+        message += ": " + dumpIRToString(inst, dumpOptions);
+    }
+
+    getSink()->diagnose(inst, Diagnostics::unimplemented, message);
 }
 
 bool CLikeSourceEmitter::hasExplicitConstantBufferOffset(IRInst* cbufferType)
