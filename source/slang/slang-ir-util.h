@@ -32,6 +32,10 @@ public:
     IRInst* cloneInst(IRBuilder* builder, IRInst* src);
 };
 
+/// Retrieves or lazily creates a module-scoped suffix applied to non-exported symbols.
+/// The suffix remains stable for the lifetime of the module instance.
+String getOrCreateModuleNonPublicSuffix(IRModuleInst* moduleInst);
+
 
 struct DeduplicateContext
 {

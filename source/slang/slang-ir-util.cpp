@@ -5,8 +5,52 @@
 #include "slang-ir-dominators.h"
 #include "slang-ir-insts.h"
 
+#include <cstdint>
+#include <random>
+
 namespace Slang
 {
+
+static String _generateRandomSuffix()
+{
+    std::random_device rd;
+    uint32_t value = rd();
+    if (value == 0)
+    {
+        value = 0x4AE33F2Eu; // arbitrary non-zero fallback
+    }
+
+    const char kHexDigits[] = "0123456789abcdef";
+    char buffer[9];
+    uint32_t temp = value;
+    for (int i = 7; i >= 0; --i)
+    {
+        buffer[i] = kHexDigits[temp & 0xF];
+        temp >>= 4;
+    }
+    buffer[8] = 0;
+
+    StringBuilder sb;
+    sb.append("_");
+    sb.append(buffer);
+    return sb.produceString();
+}
+
+String getOrCreateModuleNonPublicSuffix(IRModuleInst* moduleInst)
+{
+    static Dictionary<IRModuleInst*, String> map;
+
+    if (!moduleInst)
+        return String();
+
+    String suffix;
+    if (map.tryGetValue(moduleInst, suffix))
+        return suffix;
+
+    suffix = _generateRandomSuffix();
+    map[moduleInst] = suffix;
+    return suffix;
+}
 
 bool isPointerOfType(IRInst* type, IROp opCode)
 {

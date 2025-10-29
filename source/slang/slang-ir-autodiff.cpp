@@ -5,6 +5,7 @@
 #include "slang-ir-autodiff-fwd.h"
 #include "slang-ir-autodiff-pairs.h"
 #include "slang-ir-autodiff-rev.h"
+#include "slang-ir-util.h"
 #include "slang-ir-inline.h"
 #include "slang-ir-single-return.h"
 #include "slang-ir-ssa-simplification.h"
@@ -839,6 +840,11 @@ IRInst* DifferentialPairTypeBuilder::_createDiffPairType(IRType* origBaseType, I
     StringBuilder nameBuilder;
     nameBuilder << "DiffPair_";
     getTypeNameHint(nameBuilder, origBaseType);
+    String moduleSuffix = getOrCreateModuleNonPublicSuffix(sharedContext->moduleInst);
+    if (moduleSuffix.getLength())
+    {
+        nameBuilder.append(moduleSuffix);
+    }
     builder.addNameHintDecoration(pairStructType, nameBuilder.toString().getUnownedSlice());
 
     builder.createStructField(pairStructType, _getOrCreatePrimalStructKey(), origBaseType);

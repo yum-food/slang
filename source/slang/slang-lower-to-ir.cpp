@@ -2654,6 +2654,126 @@ static String getNameForNameHint(IRGenContext* context, Decl* decl)
     return sb.produceString();
 }
 
+static bool shouldApplyNonPublicSuffix(Decl* target)
+{
+    if (!target || !target->getName())
+        return false;
+
+    if (!(as<FuncDecl>(target) || as<AggTypeDecl>(target)))
+        return false;
+
+    if (target->hasModifier<PublicModifier>() || target->hasModifier<HLSLExportModifier>() ||
+        target->hasModifier<ExternModifier>() || target->hasModifier<ExternCppModifier>() ||
+        target->hasModifier<DllImportAttribute>() || target->hasModifier<DllExportAttribute>() ||
+        target->hasModifier<CudaDeviceExportAttribute>() ||
+        target->hasModifier<CudaHostAttribute>() || target->hasModifier<CudaKernelAttribute>() ||
+        target->hasModifier<TorchEntryPointAttribute>() ||
+        target->hasModifier<AutoPyBindCudaAttribute>() ||
+        target->hasModifier<PyExportAttribute>())
+    {
+        return false;
+    }
+
+    if (auto aggType = as<AggTypeDecl>(target))
+    {
+        if (!(as<StructDecl>(aggType) || as<ClassDecl>(aggType)))
+            return false;
+    }
+
+    Decl* parent = target->parentDecl;
+    while (parent)
+    {
+        if (as<GenericDecl>(parent))
+        {
+            parent = parent->parentDecl;
+            continue;
+        }
+
+        if (as<NamespaceDecl>(parent) || as<ModuleDecl>(parent))
+            return true;
+
+        return false;
+    }
+
+    return false;
+}
+
+static bool hasExplicitExportedLinkage(IRInst* inst)
+{
+    if (!inst)
+        return false;
+
+    return inst->findDecoration<IRPublicDecoration>() ||
+           inst->findDecoration<IRExportDecoration>() ||
+           inst->findDecoration<IRHLSLExportDecoration>() ||
+           inst->findDecoration<IRExternCppDecoration>() ||
+           inst->findDecoration<IRDllImportDecoration>() ||
+           inst->findDecoration<IRDllExportDecoration>() ||
+           inst->findDecoration<IRCudaDeviceExportDecoration>() ||
+           inst->findDecoration<IRCudaHostDecoration>() ||
+           inst->findDecoration<IRCudaKernelDecoration>() ||
+           inst->findDecoration<IRTorchEntryPointDecoration>() ||
+           inst->findDecoration<IRAutoPyBindCudaDecoration>() ||
+           inst->findDecoration<IRPyExportDecoration>();
+}
+
+static bool shouldApplyNonPublicSuffix(IRInst* inst)
+{
+    if (!inst)
+        return false;
+
+    if (hasExplicitExportedLinkage(inst))
+        return false;
+
+    if (as<IRGlobalValueWithCode>(inst) || as<IRStructType>(inst) || as<IRClassType>(inst) ||
+        as<IRInterfaceType>(inst))
+    {
+        return true;
+    }
+
+    return false;
+}
+
+static void appendSuffixIfNeeded(IRGenContext* context, IRInst* inst, Decl* decl, String& name)
+{
+    bool needsSuffix = false;
+    if (decl)
+    {
+        needsSuffix = shouldApplyNonPublicSuffix(decl);
+    }
+    else
+    {
+        needsSuffix = shouldApplyNonPublicSuffix(inst);
+    }
+
+    if (!needsSuffix)
+        return;
+
+    IRModuleInst* moduleInst = nullptr;
+    if (inst)
+    {
+        if (auto module = inst->getModule())
+            moduleInst = module->getModuleInst();
+    }
+    if (!moduleInst && context && context->irBuilder)
+    {
+        if (auto module = context->irBuilder->getModule())
+            moduleInst = module->getModuleInst();
+    }
+
+    String suffix = getOrCreateModuleNonPublicSuffix(moduleInst);
+    if (!suffix.getLength())
+        return;
+
+    if (name.endsWith(suffix))
+        return;
+
+    StringBuilder sb;
+    sb.append(name);
+    sb.append(suffix);
+    name = sb.produceString();
+}
+
 /// Try to add an appropriate name hint to the instruction,
 /// that can be used for back-end code emission or debug info.
 static void addNameHint(IRGenContext* context, IRInst* inst, Decl* decl)
@@ -2661,6 +2781,9 @@ static void addNameHint(IRGenContext* context, IRInst* inst, Decl* decl)
     String name = getNameForNameHint(context, decl);
     if (name.getLength() == 0)
         return;
+
+    appendSuffixIfNeeded(context, inst, decl, name);
+
     context->irBuilder->addNameHintDecoration(inst, name.getUnownedSlice());
 }
 
@@ -2672,7 +2795,9 @@ static void addNameHint(IRGenContext* context, IRInst* inst, char const* text)
         return;
     }
 
-    context->irBuilder->addNameHintDecoration(inst, UnownedTerminatedStringSlice(text));
+    String name(text);
+    appendSuffixIfNeeded(context, inst, nullptr, name);
+    context->irBuilder->addNameHintDecoration(inst, name.getUnownedSlice());
 }
 
 LoweredValInfo createVar(IRGenContext* context, IRType* type, Decl* decl = nullptr)
