@@ -2330,10 +2330,11 @@ void CLikeSourceEmitter::diagnoseUnhandledInst(IRInst* inst)
     if (inst) {
         const IRDumpOptions dumpOptions{IRDumpOptions::Mode::Detailed,
                                         IRDumpOptions::Flag::DumpDebugIds};
-        message += ": " + dumpIRToString(inst, dumpOptions);
+        message += ": ";
+        message += dumpIRToString(inst, dumpOptions).getBuffer();
     }
 
-    getSink()->diagnose(inst, Diagnostics::unimplemented, message);
+    getSink()->diagnose(inst, Diagnostics::unimplemented, message.c_str());
 }
 
 bool CLikeSourceEmitter::hasExplicitConstantBufferOffset(IRInst* cbufferType)
