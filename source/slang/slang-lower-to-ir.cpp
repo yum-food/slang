@@ -2698,42 +2698,6 @@ static bool shouldApplyNonPublicSuffix(Decl* target)
     return false;
 }
 
-static bool hasExplicitExportedLinkage(IRInst* inst)
-{
-    if (!inst)
-        return false;
-
-    return inst->findDecoration<IRPublicDecoration>() ||
-           inst->findDecoration<IRExportDecoration>() ||
-           inst->findDecoration<IRHLSLExportDecoration>() ||
-           inst->findDecoration<IRExternCppDecoration>() ||
-           inst->findDecoration<IRDllImportDecoration>() ||
-           inst->findDecoration<IRDllExportDecoration>() ||
-           inst->findDecoration<IRCudaDeviceExportDecoration>() ||
-           inst->findDecoration<IRCudaHostDecoration>() ||
-           inst->findDecoration<IRCudaKernelDecoration>() ||
-           inst->findDecoration<IRTorchEntryPointDecoration>() ||
-           inst->findDecoration<IRAutoPyBindCudaDecoration>() ||
-           inst->findDecoration<IRPyExportDecoration>();
-}
-
-static bool shouldApplyNonPublicSuffix(IRInst* inst)
-{
-    if (!inst)
-        return false;
-
-    if (hasExplicitExportedLinkage(inst))
-        return false;
-
-    if (as<IRGlobalValueWithCode>(inst) || as<IRStructType>(inst) || as<IRClassType>(inst) ||
-        as<IRInterfaceType>(inst))
-    {
-        return true;
-    }
-
-    return false;
-}
-
 static void appendSuffixIfNeeded(IRGenContext* context, IRInst* inst, Decl* decl, String& name)
 {
     bool needsSuffix = false;
@@ -2743,7 +2707,7 @@ static void appendSuffixIfNeeded(IRGenContext* context, IRInst* inst, Decl* decl
     }
     else
     {
-        needsSuffix = shouldApplyNonPublicSuffix(inst);
+        needsSuffix = shouldApplyModuleNonPublicSuffix(inst);
     }
 
     if (!needsSuffix)

@@ -841,10 +841,7 @@ IRInst* DifferentialPairTypeBuilder::_createDiffPairType(IRType* origBaseType, I
     nameBuilder << "DiffPair_";
     getTypeNameHint(nameBuilder, origBaseType);
     String moduleSuffix = getOrCreateModuleNonPublicSuffix(sharedContext->moduleInst);
-    if (moduleSuffix.getLength())
-    {
-        nameBuilder.append(moduleSuffix);
-    }
+    nameBuilder.append(moduleSuffix);
     builder.addNameHintDecoration(pairStructType, nameBuilder.toString().getUnownedSlice());
 
     builder.createStructField(pairStructType, _getOrCreatePrimalStructKey(), origBaseType);

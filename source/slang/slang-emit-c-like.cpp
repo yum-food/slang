@@ -34,6 +34,82 @@ namespace Slang
 bool isCPUTarget(TargetRequest* targetReq);
 bool isCUDATarget(TargetRequest* targetReq);
 
+static bool _isHexDigit(char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+}
+
+static UnownedStringSlice _trimTrailingHexSuffix(const UnownedStringSlice& name)
+{
+    const Index len = name.getLength();
+    if (len >= 9 && name[len - 9] == '_')
+    {
+        bool allHex = true;
+        for (Index i = len - 8; i < len; ++i)
+        {
+            if (!_isHexDigit(name[i]))
+            {
+                allHex = false;
+                break;
+            }
+        }
+        if (allHex)
+            return name.head(len - 9);
+    }
+    return name;
+}
+
+static bool _sliceEndsWith(const UnownedStringSlice& value, const UnownedStringSlice& suffix)
+{
+    const Index suffixLen = suffix.getLength();
+    if (suffixLen == 0)
+        return true;
+    const Index valueLen = value.getLength();
+    if (valueLen < suffixLen)
+        return false;
+    for (Index i = 0; i < suffixLen; ++i)
+    {
+        if (value[valueLen - suffixLen + i] != suffix[i])
+            return false;
+    }
+    return true;
+}
+
+static String _ensureModuleSuffix(IRInst* inst, const UnownedStringSlice& hint)
+{
+    UnownedStringSlice trimmed = _trimTrailingHexSuffix(hint);
+    const bool hadHexSuffix = trimmed.getLength() != hint.getLength();
+
+    if (!hadHexSuffix && !shouldApplyModuleNonPublicSuffix(inst))
+        return String(hint);
+
+    IRModuleInst* moduleInst = nullptr;
+    if (inst)
+    {
+        if (auto module = inst->getModule())
+            moduleInst = module->getModuleInst();
+    }
+    if (!moduleInst)
+        return String(hint);
+
+    String suffix = getOrCreateModuleNonPublicSuffix(moduleInst);
+    if (!suffix.getLength())
+        return String(hint);
+
+    const UnownedStringSlice suffixSlice = suffix.getUnownedSlice();
+
+    if (_sliceEndsWith(hint, suffixSlice))
+        return String(hint);
+
+    if (_sliceEndsWith(trimmed, suffixSlice))
+        return String(trimmed);
+
+    StringBuilder sb;
+    sb.append(trimmed);
+    sb.append(suffixSlice);
+    return sb.produceString();
+}
+
 struct CLikeSourceEmitter::ComputeEmitActionsContext
 {
     IRInst* moduleInst;
@@ -1250,7 +1326,8 @@ String CLikeSourceEmitter::generateName(IRInst* inst)
     // to provide the basis for the actual name in the output code.
     if (auto nameHintDecoration = inst->findDecoration<IRNameHintDecoration>())
     {
-        return _generateUniqueName(nameHintDecoration->getName());
+        String adjustedName = _ensureModuleSuffix(inst, nameHintDecoration->getName());
+        return _generateUniqueName(adjustedName.getUnownedSlice());
     }
 
     // If the instruction has a linkage decoration, just use that.

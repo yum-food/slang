@@ -36,6 +36,9 @@ public:
 /// The suffix remains stable for the lifetime of the module instance.
 String getOrCreateModuleNonPublicSuffix(IRModuleInst* moduleInst);
 
+bool hasExplicitExportedLinkage(IRInst* inst);
+bool shouldApplyModuleNonPublicSuffix(IRInst* inst);
+
 
 struct DeduplicateContext
 {

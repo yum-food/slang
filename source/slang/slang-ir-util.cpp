@@ -6,6 +6,7 @@
 #include "slang-ir-insts.h"
 
 #include <cstdint>
+#include <iostream>
 #include <random>
 
 namespace Slang
@@ -14,15 +15,12 @@ namespace Slang
 static String _generateRandomSuffix()
 {
     std::random_device rd;
-    uint32_t value = rd();
-    if (value == 0)
-    {
-        value = 0x4AE33F2Eu; // arbitrary non-zero fallback
-    }
+    uint32_t seed = rd();
+    std::cout << "seed: " << seed << std::endl;
 
     const char kHexDigits[] = "0123456789abcdef";
     char buffer[9];
-    uint32_t temp = value;
+    uint32_t temp = seed;
     for (int i = 7; i >= 0; --i)
     {
         buffer[i] = kHexDigits[temp & 0xF];
@@ -36,20 +34,57 @@ static String _generateRandomSuffix()
     return sb.produceString();
 }
 
-String getOrCreateModuleNonPublicSuffix(IRModuleInst* moduleInst)
+String getOrCreateModuleNonPublicSuffix(IRModuleInst* irmInst)
 {
     static Dictionary<IRModuleInst*, String> map;
 
-    if (!moduleInst)
+    if (!irmInst)
         return String();
 
     String suffix;
-    if (map.tryGetValue(moduleInst, suffix))
+    if (map.tryGetValue(irmInst, suffix))
         return suffix;
 
     suffix = _generateRandomSuffix();
-    map[moduleInst] = suffix;
+    map[irmInst] = suffix;
+    std::cout << "generated suffix " << suffix.getBuffer() << std::endl;
     return suffix;
+}
+
+bool hasExplicitExportedLinkage(IRInst* inst)
+{
+    if (!inst)
+        return false;
+
+    return inst->findDecoration<IRPublicDecoration>() ||
+           inst->findDecoration<IRExportDecoration>() ||
+           inst->findDecoration<IRHLSLExportDecoration>() ||
+           inst->findDecoration<IRExternCppDecoration>() ||
+           inst->findDecoration<IRDllImportDecoration>() ||
+           inst->findDecoration<IRDllExportDecoration>() ||
+           inst->findDecoration<IRCudaDeviceExportDecoration>() ||
+           inst->findDecoration<IRCudaHostDecoration>() ||
+           inst->findDecoration<IRCudaKernelDecoration>() ||
+           inst->findDecoration<IRTorchEntryPointDecoration>() ||
+           inst->findDecoration<IRAutoPyBindCudaDecoration>() ||
+           inst->findDecoration<IRPyExportDecoration>();
+}
+
+bool shouldApplyModuleNonPublicSuffix(IRInst* inst)
+{
+    if (!inst)
+        return false;
+
+    if (hasExplicitExportedLinkage(inst))
+        return false;
+
+    if (as<IRGlobalValueWithCode>(inst) || as<IRStructType>(inst) || as<IRClassType>(inst) ||
+        as<IRInterfaceType>(inst))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 bool isPointerOfType(IRInst* type, IROp opCode)
